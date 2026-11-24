@@ -14,6 +14,8 @@ from app.source.packet import bundle
 
 STEPS={'intake':'停靠与预约采信','identity':'车牌匿名关联','occupancy':'占用区间重建','pricing':'首免与升级价',
        'settlement':'逐单与泊位对账','history':'清算批次复跑','appeal':'理赔证据签发'}
+EXTRA_SCREENS={'rebook':'临时封闭换泊','rebooking':'临时封闭换泊','rebooks':'临时封闭换泊',
+               'reassignment':'换泊安排','allocation':'换泊安排'}
 workbench=APIRouter()
 views=Environment(loader=FileSystemLoader(Path(__file__).parent/'templates'),
                   autoescape=select_autoescape(('html','j2')))
@@ -26,12 +28,15 @@ def yuan(cents):
 
 
 @workbench.get('/',response_class=HTMLResponse)
+@workbench.get('/rebooking',response_class=HTMLResponse)
 @workbench.get('/clearing/{screen}',response_class=HTMLResponse)
 def screen(request:Request,screen:str='overview',sample:str='dirty',key:str|None=None):
-    if screen!='overview' and screen not in STEPS:
+    if screen!='overview' and screen not in STEPS and screen not in EXTRA_SCREENS:
         raise DocketError('STAGE_BAD','没有这项清算工序',404)
     docket=request.app.state.docket
     signed=None
+    rebook_state=docket.rebooks_snapshot()
+    rebook_records=list(rebook_state['assignments'].values())
     if key:
         record=docket.require(key)
         report,meta=record['evidence'],record['manifest']
@@ -40,13 +45,14 @@ def screen(request:Request,screen:str='overview',sample:str='dirty',key:str|None
         if screen=='appeal':
             signed=issue(record)
     else:
-        clearing=Clearing(bundle(sample),docket.secret)
+        clearing=Clearing(bundle(sample),docket.secret,rebooks=rebook_records)
         report=jsonable_encoder(clearing.report())
         meta={'rule':POLICY,'survey':jsonable_encoder(vars(clearing.survey))}
     stages=list(STEPS)
     index=stages.index(screen) if screen in stages else -1
     history=docket.manifests() if screen=='history' else []
     path=lambda page: str(request.url_for('screen',screen=page).include_query_params(sample=sample,**({'key':key} if key else {})))
-    return views.get_template('desk.html').render(screen=screen,steps=STEPS,index=index,next_step=stages[index+1] if index<6 else None,
+    return views.get_template('desk.html').render(screen=screen,steps=STEPS,index=index,next_step=stages[index+1] if 0<=index<len(stages)-1 else None,
         previous=stages[index-1] if index>0 else None,path=path,key=key,sample=sample,report=report,meta=meta,
-        history=history,signed=signed,label=LABEL,local=local,yuan=yuan)
+        history=history,signed=signed,label=LABEL,local=local,yuan=yuan,rebook_state=rebook_state,
+        screen_title=EXTRA_SCREENS.get(screen),step_count=len(STEPS))

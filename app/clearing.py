@@ -13,9 +13,10 @@ STAGES=('intake','identity','occupancy','pricing','settlement')
 
 
 class Clearing:
-    def __init__(self, files, secret):
+    def __init__(self, files, secret, rebooks=None, rebookings=None, approvals=None, **kwargs):
         self.survey,self.sheets=load(files)
         self.secret=secret
+        self.rebooks=rebooks if rebooks is not None else rebookings if rebookings is not None else approvals or []
 
     @cached_property
     def anonymous(self):
@@ -59,7 +60,7 @@ class Clearing:
 
     @cached_property
     def pricing(self):
-        items=price(self.identity['stays'],self.coverage[1])
+        items=price(self.identity['stays'],self.coverage[1],self.rebooks)
         return {'stays':items,'due_cents':sum(s['due_cents'] for s in items)}
 
     @cached_property

@@ -1,2 +1,18 @@
-<h2>逐单差价</h2><div class="tablebox"><table><thead><tr><th>到达 / 泊位</th><th>应收</th><th>实收</th><th>差价</th><th>回执</th><th>结论</th></tr></thead><tbody>{% for row in report.settlement.lines %}<tr><td>{{ local(row.arrival) }} · {{ row.berth }}</td><td>{{ yuan(row.due_cents) }}</td><td>{{ yuan(row.paid_cents) }}</td><td class="{{ 'difference' if row.difference_cents else '' }}">{{ yuan(row.difference_cents) }}</td><td>{% for r in row.receipts %}{{ r.fields.receipt }} · 第 {{ r.line }} 行{% if not loop.last %} / {% endif %}{% else %}—{% endfor %}</td><td>{{ label[row.code] }}</td></tr>{% else %}<tr><td colspan="6">没有可结算停靠。</td></tr>{% endfor %}</tbody></table></div>
+<h2>逐单差价</h2>
+<section class="panel rebook-summary" data-rebook-panel>
+  <h3>换泊后的应收</h3>
+  <p data-rebook-receivable data-rebook-due-cents="{{ money.due_cents }}">当前应收合计：<strong>{{ yuan(money.due_cents) }}</strong>（以获准泊位和时段匹配后核价）。</p>
+  {% if rebook_state and rebook_state.decisions %}
+  <p>已确认 {{ rebook_state.counts.approved }} 单，等待 {{ rebook_state.counts.waiting }} 单，兑现 {{ rebook_state.counts.fulfilled }} 单。</p>
+  <div class="tablebox"><table><thead><tr><th>申请 / 原预约</th><th>获准泊位</th><th>获准时段</th><th>状态</th><th>约定首免</th></tr></thead><tbody>
+  {% for item in rebook_state.decisions %}
+  <tr data-rebook-row="{{ item.request }}"><td>{{ item.request }}{% if item.reservation and item.reservation != item.request %} · {{ item.reservation }}{% endif %}</td>
+  <td>{{ item.berth or '—' }}</td><td>{% if item.start and item.end %}{{ local(item.start if item.start is string else item.start.isoformat()) }} → {{ local(item.end if item.end is string else item.end.isoformat()) }}{% else %}—{% endif %}</td>
+  <td>{{ label[item.status] or label[item.code] or item.status }}{% if item.reused %} · 已确认不重复{% endif %}</td>
+  <td>{{ item.terms.free_minutes if item.terms else 10 }} 分钟</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<p data-rebook-empty>暂无换泊确认；获准并停靠后，原预约首免会在下方逐单应收中体现。</p>{% endif %}
+</section>
+<div class="tablebox"><table><thead><tr><th>到达 / 泊位</th><th>应收</th><th>实收</th><th>差价</th><th>回执</th><th>换泊约定</th><th>结论</th></tr></thead><tbody>{% for row in report.settlement.lines %}<tr><td>{{ local(row.arrival) }} · {{ row.berth }}</td><td>{{ yuan(row.due_cents) }}</td><td>{{ yuan(row.paid_cents) }}</td><td class="{{ 'difference' if row.difference_cents else '' }}">{{ yuan(row.difference_cents) }}</td><td>{% for r in row.receipts %}{{ r.fields.receipt }} · 第 {{ r.line }} 行{% if not loop.last %} / {% endif %}{% else %}—{% endfor %}</td><td>{% if row.rebook %}{{ row.rebook.berth }} · {{ local(row.rebook.start) }}–{{ local(row.rebook.end) }} · 原预约首免{% elif row.rebook_code %}{{ label[row.rebook_code] or row.rebook_code }}{% else %}—{% endif %}</td><td>{{ label[row.code] }}</td></tr>{% else %}<tr><td colspan="7">没有可结算停靠。</td></tr>{% endfor %}</tbody></table></div>
 <section class="panel exceptions"><h3>游离实收</h3>{% for row in report.settlement.orphans %}<p>回执 {{ row.fields.receipt }} · 第 {{ row.line }} 行 · {{ yuan(row.cents) }}</p>{% else %}<p>无游离回执。</p>{% endfor %}</section>{% if report.settlement.isolated %}{% set issues=report.settlement.isolated %}{% include 'issues.j2' %}{% endif %}

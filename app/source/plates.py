@@ -12,6 +12,32 @@ def token(raw,salt):
     return hmac.digest(salt,clean.encode(),'sha256').hex()
 
 
+def scrub_deep(value,salt):
+    """Replace plate fields anywhere in an orchestration payload."""
+    if isinstance(value,dict):
+        plate=value.get('plate')
+        if plate is not None:
+            try:
+                value.setdefault('vehicle',token(str(plate),salt))
+            except ValueError:
+                value['plate_status']='PLATE'
+            value.pop('plate',None)
+        fields=value.get('fields')
+        if isinstance(fields,dict) and fields.get('plate') is not None:
+            try:
+                fields.setdefault('vehicle',token(str(fields['plate']),salt))
+                value.setdefault('vehicle',fields['vehicle'])
+            except ValueError:
+                fields['plate_status']='PLATE'
+            fields.pop('plate',None)
+        for child in value.values():
+            scrub_deep(child,salt)
+    elif isinstance(value,list):
+        for child in value:
+            scrub_deep(child,salt)
+    return value
+
+
 def scrub(entries,salt):
     good,bad=[],[]
     for row in entries:

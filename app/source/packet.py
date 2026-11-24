@@ -17,10 +17,10 @@ def bundle(name):
 
 
 def decode(payload):
-    if isinstance(payload,dict) and set(payload)=={'sample'}:
+    if isinstance(payload,dict) and payload.get('sample') and 'bundle' not in payload:
         name=str(payload['sample'])
         return bundle(name),name
-    files=payload.get('bundle') if isinstance(payload,dict) and set(payload)=={'bundle'} else None
+    files=payload.get('bundle') if isinstance(payload,dict) else None
     if not isinstance(files,dict) or set(files)!=set(NAMES) or any(
         not isinstance(text,str) or len(text)>200_000 for text in files.values()
     ):

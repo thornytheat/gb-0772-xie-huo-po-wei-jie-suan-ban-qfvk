@@ -27,6 +27,8 @@ python -m pytest -q
 
 独立预览为 `GET /api/cases/{dirty|clean}/{stage}`，阶段名见深度登记。自有样例可以 `POST /api/dockets`，`bundle` 对象需包含 `survey`、`sensors`、`bookings`、`payments` 四份 UTF-8 字符串，内置数据可用 `{"sample":"dirty"}`。历史 `GET /api/dockets`，归档 `GET /api/dockets/{key}`，理赔附件 `GET /api/export/{key}`。
 
+临时封闭换泊可用 `POST /api/rebookings/plan` 预排、`POST /api/rebookings` 持久确认、`POST /api/rebookings/rerun` 封闭解除后幂等重跑、`POST /api/rebookings/{id}/fulfill` 登记兑现，并在 `GET /clearing/settlement` 核对换泊后应收。排程优先保留可满足全部申请的最大匹配；候选最少（尤其只有一个可去泊位）的车辆优先占用紧缺资源，已生效预约的重叠时段作为不可借区间，已兑现确认按保存的费率与首免约定核价。
+
 - [字段、计费与边界](docs/DATA-DICTIONARY.md)
 - [模块和陷阱](docs/DEPTH.md)
 - [理赔复核步骤](docs/APPEAL.md)

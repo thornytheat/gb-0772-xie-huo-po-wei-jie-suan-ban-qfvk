@@ -5,6 +5,7 @@ import secrets
 import sqlite3
 
 from app.archive.canonical import serialize
+from app.archive.rebooks import RebookStore
 from app.problems import DocketError
 
 
@@ -19,6 +20,22 @@ class Docket:
             ''')
             database.execute("INSERT OR IGNORE INTO settings VALUES ('pseudonym_key', ?)",(secrets.token_bytes(32),))
             self.secret=database.execute("SELECT value FROM settings WHERE name='pseudonym_key'").fetchone()[0]
+        self.rebook_store=RebookStore(path)
+
+    def submit_rebooks(self,payload):
+        from app.source.plates import scrub_deep
+        return self.rebook_store.submit(scrub_deep(payload,self.secret))
+
+    def rerun_rebooks(self,payload=None):
+        from app.source.plates import scrub_deep
+        return self.rebook_store.rerun(scrub_deep(payload or {},self.secret))
+
+    def rebooks_snapshot(self):
+        return self.rebook_store.result()
+
+    def fulfill_rebook(self,request_id,actual=None):
+        from app.source.plates import scrub_deep
+        return self.rebook_store.fulfill(request_id,scrub_deep(actual,self.secret) if actual is not None else actual)
 
     @contextmanager
     def connect(self):

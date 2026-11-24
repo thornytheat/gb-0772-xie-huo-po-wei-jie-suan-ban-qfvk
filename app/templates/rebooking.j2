@@ -1,0 +1,13 @@
+<h2>封闭泊位换泊安排</h2>
+<section class="panel" data-rebook-workbench>
+  <p>两车同时申请时，先搜索可满足全部申请的匹配；只有一个候选泊位的车辆优先占用紧缺资源，另有选择的车辆改停其他泊位。与别车已生效预约重叠的时段保留给原预约。</p>
+  <div class="tablebox"><table><thead><tr><th>申请</th><th>原泊位</th><th>获准泊位</th><th>获准时段</th><th>状态</th><th>约定核价</th></tr></thead><tbody>
+  {% for item in rebook_state.decisions %}
+  <tr data-rebook-row="{{ item.request }}" data-rebook-due-cents="{{ item.agreed_due_cents if item.agreed_due_cents is defined else item.due_cents }}"><td>{{ item.request }}</td><td>{{ item.from_berth or '—' }}</td><td>{{ item.berth or '空等' }}</td>
+  <td>{% if item.start and item.end %}{{ local(item.start if item.start is string else item.start.isoformat()) }} → {{ local(item.end if item.end is string else item.end.isoformat()) }}{% else %}—{% endif %}</td>
+  <td>{{ label[item.status] or label[item.code] or item.status }}{% if item.reused %} · 已确认不重复{% endif %}</td>
+  <td>{% if item.agreed_due_cents is defined or item.due_cents is defined %}{{ yuan(item.agreed_due_cents if item.agreed_due_cents is defined else item.due_cents) }}{% else %}原预约首免 {{ item.terms.free_minutes if item.terms else 10 }} 分钟{% endif %}</td></tr>
+  {% else %}<tr><td colspan="6">暂无换泊确认；可通过 <code>POST /api/rebookings/plan</code> 预排。</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p>封闭解除后调用 <code>POST /api/rebookings/rerun</code>；已确认记录原样复用，已兑现记录按保存的约定金额核价。应收结果见<a href="{{ path('settlement') }}">逐单与泊位对账</a>。</p>
+</section>
